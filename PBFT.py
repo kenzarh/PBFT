@@ -10,14 +10,14 @@ nodes_ports = [(2000 + i) for i in range (0,2000)]
 
 clients_ports = [(20000 + i) for i in range (0,20)]
 
-preprepare_format_file = "Desktop/PBFT_implementation/preprepare_format.json"
-prepare_format_file = "Desktop/PBFT_implementation/prepare_format.json"
-commit_format_file = "Desktop/PBFT_implementation/commit_format.json"
-reply_format_file = "Desktop/PBFT_implementation/reply_format.json"
-checkpoint_format_file = "Desktop/PBFT_implementation/checkpoint_format.json"
-checkpoint_vote_format_file = "Desktop/PBFT_implementation/checkpoint_vote_format.json"
-view_change_format_file = "Desktop/PBFT_implementation/view_change_format.json"
-new_view_format_file = "Desktop/PBFT_implementation/new_view_format.json"
+preprepare_format_file = "Desktop/PBFT/preprepare_format.json"
+prepare_format_file = "Desktop/PBFT/prepare_format.json"
+commit_format_file = "Desktop/PBFT/commit_format.json"
+reply_format_file = "Desktop/PBFT/reply_format.json"
+checkpoint_format_file = "Desktop/PBFT/checkpoint_format.json"
+checkpoint_vote_format_file = "Desktop/PBFT/checkpoint_vote_format.json"
+view_change_format_file = "Desktop/PBFT/view_change_format.json"
+new_view_format_file = "Desktop/PBFT/new_view_format.json"
 
 
 def run_PBFT(number_of_honest_nodes,number_of_non_responding_nodes,number_of_faulty_primary,number_of_slow_nodes,checkpoint_frequency0,clients_ports0,timer_limit_before_view_change0): # All the nodes participate in the consensus
@@ -101,7 +101,6 @@ class Node():
         self.node_port = nodes_ports[node_id]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
         #s.settimeout(timer_limit_before_view_change)
         s.bind(("localhost", self.node_port))
         s.listen()
@@ -144,7 +143,8 @@ class Node():
                             last_timestamp = requests[client_id]
                         else:
                             last_timestamp = 0
-                        if (last_timestamp<=actual_timestamp):
+
+                        if ((last_timestamp<actual_timestamp)or(last_timestamp==actual_timestamp and (received_message["request"] != reply["request"] for reply in self.message_reply))):
                             requests[client_id] = actual_timestamp
                             self.message_log.append(received_message)
                             self.broadcast_preprepare_message(request_message=received_message,nodes_ids_list=the_nodes_ids_list)
@@ -162,7 +162,7 @@ class Node():
 
                 # Making sure the digest's request is good + the view number in the message is similar to the view number of the node + We did not broadcast a message with the same view number and sequence number
                 if ((digest==requests_digest) and (view==self.view_number) and (tuple not in self.preprepares)): 
-                    
+
                     self.message_log.append(received_message)
                     self.preprepares[tuple]=digest 
                     self.broadcast_prepare_message(preprepare_message=received_message,nodes_ids_list=the_nodes_ids_list)

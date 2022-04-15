@@ -10,7 +10,7 @@ timer_limit_before_view_change = 4 # There is no value proposed in the paper so 
 checkpoint_frequency = 100 # 100 is the proposed value in the original article
 
 # Running PBFT protocol
-run_PBFT(number_of_honest_nodes=3,number_of_non_responding_nodes=0,number_of_faulty_primary=1,number_of_slow_nodes=0,checkpoint_frequency0=checkpoint_frequency,clients_ports0=clients_ports,timer_limit_before_view_change0=timer_limit_before_view_change)
+run_PBFT(number_of_honest_nodes=4,number_of_non_responding_nodes=0,number_of_faulty_primary=0,number_of_slow_nodes=0,checkpoint_frequency0=checkpoint_frequency,clients_ports0=clients_ports,timer_limit_before_view_change0=timer_limit_before_view_change)
 
 # Lancer différents clients, pas de requête pour un même client pour l'instant (fonctionnalité à ajouter,) / ajouter un join pour exécuter une autre requête
 primary_node_id = get_primary_id()
