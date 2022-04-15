@@ -1,0 +1,8 @@
+{
+    "message_type":"VIEW-CHANGE",
+    "new_view":1,
+    "last_sequence_number":0,
+    "C":"last_stable_checkpoint_validators",
+    "P":"set_of_prepared_requests_with_n>last_sequence_number",
+    "node_id":0
+}

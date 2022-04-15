@@ -1,0 +1,6 @@
+{
+    "message_type":"NEW-VIEW",
+    "new_view_number":0,
+    "V":"set_of_view_change_messages",
+    "O":"set_of_preprepare_messages"
+}

@@ -1,0 +1,9 @@
+{
+    "message_type":"PREPREPARE",
+    "view_number":0,
+    "sequence_number":0,
+    "request_digest":"the_request_digest",
+    "request":"the_request",
+    "timestamp":"the_timestamp",
+    "client_id":1
+}

@@ -1,0 +1,11 @@
+{
+    "message_type":"REPLY",
+    "view_number":0,
+    "timestamp":"the_request_timestamp",
+    "client_id":1,
+    "request":"the_request",
+    "node_id":0,
+    "sequence_number":0,
+    "request_digest":"the_request_digest",
+    "result":"the_requestsresult"
+}

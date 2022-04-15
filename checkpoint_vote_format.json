@@ -1,0 +1,6 @@
+{
+    "message_type":"VOTE",
+    "sequence_number":0,
+    "checkpoint_digest":"the_checkpoint_digest",
+    "node_id":0
+}

@@ -1,0 +1,6 @@
+{
+    "message_type":"REQUEST",
+    "request":"the_request",
+    "timestamp":"the_timestamp",
+    "client_id":1
+}

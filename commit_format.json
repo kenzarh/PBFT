@@ -1,0 +1,10 @@
+{
+    "client_id":1,
+    "message_type":"COMMIT",
+    "view_number":0,
+    "sequence_number":0,
+    "request_digest":"the_request_digest",
+    "timestamp":"the_timestamp",
+    "request":"the_request",
+    "node_id":0
+}
