@@ -2,10 +2,11 @@ import socket
 import json
 import datetime
 import time
+from PBFT import *
 
 nodes_ports = [(2000 + i) for i in range (0,2000)]
 
-clients_ports = [(20000 + i) for i in range (0,20)]
+clients_ports = [(20000 + i) for i in range (0,1000)]
 
 global request_format_file
 request_format_file = "Desktop/PBFT/request_format.json"
@@ -17,7 +18,8 @@ class Client: # Client's communication is synchronous: It can not send a request
         self.client_port = clients_ports[client_id]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(waiting_time_before_resending_request)	
-        s.bind(("localhost", self.client_port))
+        host = socket.gethostname() 
+        s.bind((host, self.client_port))
         s.listen()
         self.socket = s
         self.sent_requests_without_answer=[] # Requests the client sent but didn't get an answer yet
@@ -27,7 +29,8 @@ class Client: # Client's communication is synchronous: It can not send a request
         for node_id in nodes_ids_list:
             node_port = nodes_ports[node_id]
             sending_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sending_socket.connect(("localhost", node_port))
+            host = socket.gethostname() 
+            sending_socket.connect((host, node_port))
             sending_socket.send(str(request_message).encode())
 
         # Waiting for answers
@@ -67,7 +70,8 @@ class Client: # Client's communication is synchronous: It can not send a request
                     if similar_replies == (f+1):
                         receiving_time=time.time()
                         duration = receiving_time-sending_time
-                        print("Client %d got reply within %f seconds" % (self.client_id,duration))
+                        number_of_messages = stop_request_execution(received_message["request"])
+                        print("Client %d got reply within %f seconds. The network exchanged %d messages" % (self.client_id,duration,number_of_messages))
                         self.sent_requests_without_answer.remove(received_message["request"])
                         #s.close()
                         #sys.exit()
@@ -84,7 +88,8 @@ class Client: # Client's communication is synchronous: It can not send a request
         request_message["client_id"] = self.client_id
         # The client sends the request to what it believes is the primary node:
         sending_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sending_socket.connect(("localhost", primary_node_port))
+        host = socket.gethostname() 
+        sending_socket.connect((host, primary_node_port))
         sending_socket.send(str(request_message).encode())
         if (request not in self.sent_requests_without_answer):
             self.sent_requests_without_answer.append(request)
@@ -126,7 +131,8 @@ class Client: # Client's communication is synchronous: It can not send a request
                     if similar_replies == (f+1):
                         receiving_time=time.time()
                         duration = receiving_time-sending_time
-                        print("Client %d got reply within %f seconds" % (self.client_id,duration))
+                        number_of_messages = stop_request_execution(received_message["request"])
+                        print("Client %d got reply within %f seconds. The network exchanged %d messages" % (self.client_id,duration,number_of_messages))
                         self.sent_requests_without_answer.remove(received_message["request"])
                         #s.close()
                         #sys.exit()
