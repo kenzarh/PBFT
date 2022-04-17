@@ -10,14 +10,14 @@ nodes_ports = [(2000 + i) for i in range (0,2000)]
 
 clients_ports = [(20000 + i) for i in range (0,20)]
 
-preprepare_format_file = "Desktop/PBFT/preprepare_format.json"
-prepare_format_file = "Desktop/PBFT/prepare_format.json"
-commit_format_file = "Desktop/PBFT/commit_format.json"
-reply_format_file = "Desktop/PBFT/reply_format.json"
-checkpoint_format_file = "Desktop/PBFT/checkpoint_format.json"
-checkpoint_vote_format_file = "Desktop/PBFT/checkpoint_vote_format.json"
-view_change_format_file = "Desktop/PBFT/view_change_format.json"
-new_view_format_file = "Desktop/PBFT/new_view_format.json"
+preprepare_format_file = "preprepare_format.json"
+prepare_format_file = "prepare_format.json"
+commit_format_file = "commit_format.json"
+reply_format_file = "reply_format.json"
+checkpoint_format_file = "checkpoint_format.json"
+checkpoint_vote_format_file = "checkpoint_vote_format.json"
+view_change_format_file = "view_change_format.json"
+new_view_format_file = "new_view_format.json"
 
 
 def run_PBFT(nodes,checkpoint_frequency0,clients_ports0,timer_limit_before_view_change0): # All the nodes participate in the consensus
@@ -75,9 +75,9 @@ def run_PBFT(nodes,checkpoint_frequency0,clients_ports0,timer_limit_before_view_
                 elif (node_type=="slow_nodes"):
                     node=SlowNode(node_id=j)
                 nodes_list.append(node)
+                the_nodes_ids_list.append(j)
                 j=j+1
                 threading.Thread(target=node.receive,args=()).start()
-                the_nodes_ids_list.append(j)
                 n = n + 1
                 f = (n - 1) // 3
 
@@ -98,7 +98,6 @@ def get_f():
 
 class Node():
     def __init__(self,node_id):
-        print(node_id)
         self.node_id = node_id
         self.node_port = nodes_ports[node_id]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -429,6 +428,7 @@ class Node():
                 
     
     def receive(self,waiting_time=0): # The waiting_time parameter is for nodes we want to be slow, they will wait for a few seconds before processing a message =0 by default
+        print("Node %d started" %self.node_id)
         while True:
             # Start view change if one of the timers has reached the limit:
             i = 0 # Means no timer reached the limit , i = 1 means one of the timers reached their limit
@@ -487,9 +487,13 @@ class Node():
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         host = socket.gethostname() 
-        s.connect((host, destination_node_port))
-        s.send(str(message).encode())  
-        s.close()  
+        try:
+            s.connect((host, destination_node_port))
+            s.send(str(message).encode())  
+            s.close() 
+        except:
+            pass
+     
     def broadcast_message(self,nodes_ids_list,message): # Send to all connected nodes # Acts as a socket server
         for destination_node_id in nodes_ids_list:
             #if (destination_node_id != self.node_id):
@@ -590,10 +594,13 @@ class Node():
         reply_message["request_digest"]=commit_message["request_digest"]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         host = socket.gethostname() 
-        s.connect((host, client_port))
-        s.send(str(reply_message).encode())
-        s.close()
-        self.message_reply.append(reply_message)
+        try:
+            s.connect((host, client_port))
+            s.send(str(reply_message).encode())
+            s.close()
+            self.message_reply.append(reply_message)
+        except:
+            pass
         return reply
                              
 class HonestNode(Node):

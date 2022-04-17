@@ -9,7 +9,7 @@ nodes_ports = [(2000 + i) for i in range (0,2000)]
 clients_ports = [(20000 + i) for i in range (0,1000)]
 
 global request_format_file
-request_format_file = "Desktop/PBFT/request_format.json"
+request_format_file = "request_format.json"
 
 class Client: # Client's communication is synchronous: It can not send a request until its last request is answered.
 

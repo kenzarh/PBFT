@@ -6,14 +6,14 @@ import time
 
 # Parameters to be defined by the user
 
-waiting_time_before_resending_request = 60 # Time the client will wait before resending the request. This time, it broadcasts the request to all nodes
-timer_limit_before_view_change = 60 # There is no value proposed in the paper so let's fix it to 20s
+waiting_time_before_resending_request = 120 # Time the client will wait before resending the request. This time, it broadcasts the request to all nodes
+timer_limit_before_view_change = 120 # There is no value proposed in the paper so let's fix it to 20s
 checkpoint_frequency = 100 # 100 is the proposed value in the original article
 
 # Define the nodes we want in our network + their starting time + their type
 nodes={} # This is a dictionary of nodes we want in our network. Keys are the nodes types, and values are a list of tuples of starting time and number of nodes 
 #nodes[starting time] = [(type of nodes , number of nodes)]
-nodes[0]=[("honest_node",20),("non_responding_node",0),("faulty_primary",0),("slow_nodes",0)] # Nodes starting from the beginning
+nodes[0]=[("honest_node",10),("non_responding_node",0),("faulty_primary",0),("slow_nodes",0)] # Nodes starting from the beginning
 nodes[1]=[("honest_node",0),("non_responding_node",0),("faulty_primary",0),("slow_nodes",0)] # Nodes starting after 2 seconds
 
 # Running PBFT protocol
