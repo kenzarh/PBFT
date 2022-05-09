@@ -4,7 +4,8 @@ import socket
 import json
 import time
 import hashlib
-import sys
+from nacl.signing import SigningKey
+from nacl.signing import VerifyKey
 
 ports_file = "ports.json"
 with open(ports_file):
@@ -268,10 +269,34 @@ class Node():
                                 checkpoint_message["node_id"] = self.node_id
                                 checkpoint_content = [received_message["request_digest"],received_message["client_id"],reply] # We define the current state as the last executed request
                                 checkpoint_message["checkpoint_digest"]= hashlib.sha256(str(checkpoint_content).encode()).hexdigest()
+
                                 self.checkpoints_sequence_number.append(sequence_number)
-                                self.broadcast_message(the_nodes_ids_list,checkpoint_message)
                                 self.checkpoints[str(checkpoint_message)]=[self.node_id]
+
+
+
+
+                                # Generate a new random signing key
+                                signing_key = SigningKey.generate()
+
+                                # Sign the message with the signing key
+                                signed_checkpoint = signing_key.sign(str(checkpoint_message).encode())
+
+                                # Obtain the verify key for a given signing key
+                                verify_key = signing_key.verify_key
+
+                                # Serialize the verify key to send it to a third party
+                                public_key = verify_key.encode()
+
+                                checkpoint_message = signed_checkpoint +(b'split')+  public_key
+
+
+
+                                
+                                self.broadcast_message(the_nodes_ids_list,checkpoint_message)
+                                
             elif (message_type=="CHECKPOINT"):
+
                 lock = Lock()
                 lock.acquire()
                 for message in self.message_reply:
@@ -286,6 +311,25 @@ class Node():
                             checkpoint_vote_message["sequence_number"] = received_message["sequence_number"]
                             checkpoint_vote_message["checkpoint_digest"] = received_message["checkpoint_digest"]
                             checkpoint_vote_message["node_id"] = self.node_id
+
+
+
+                            # Generate a new random signing key
+                            signing_key = SigningKey.generate()
+
+                            # Sign the message with the signing key
+                            signed_checkpoint_vote = signing_key.sign(str(checkpoint_vote_message).encode())
+
+                            # Obtain the verify key for a given signing key
+                            verify_key = signing_key.verify_key
+
+                            # Serialize the verify key to send it to a third party
+                            public_key = verify_key.encode()
+
+                            checkpoint_vote_message = signed_checkpoint_vote +(b'split')+  public_key
+
+
+
                             self.send(received_message["node_id"],checkpoint_vote_message) 
                 lock.release()
             elif (message_type=="VOTE"):
@@ -411,6 +455,21 @@ class Node():
                             self.view_number=new_asked_view
                             self.primary_node_id=self.node_id
 
+
+                            # Generate a new random signing key
+                            signing_key = SigningKey.generate()
+
+                            # Sign the message with the signing key
+                            signed_new_view = signing_key.sign(str(new_view_message).encode())
+
+                            # Obtain the verify key for a given signing key
+                            verify_key = signing_key.verify_key
+
+                            # Serialize the verify key to send it to a third party
+                            public_key = verify_key.encode()
+
+                            new_view_message = signed_new_view +(b'split')+  public_key
+
                             self.broadcast_message(the_nodes_ids_list,new_view_message)
                             print("New view!")
                           
@@ -437,7 +496,6 @@ class Node():
                 
     
     def receive(self,waiting_time=0): # The waiting_time parameter is for nodes we want to be slow, they will wait for a few seconds before processing a message =0 by default
-        
         while True:
             # Start view change if one of the timers has reached the limit:
             i = 0 # Means no timer reached the limit , i = 1 means one of the timers reached their limit
@@ -457,14 +515,28 @@ class Node():
                     self.accepted_requests_time[request]=time.time()
             s=self.socket
             sender_socket = s.accept()[0]
-            received_message = sender_socket.recv(2048).decode()
-            received_message = received_message.replace("\'", "\"")
-            received_message = json.loads(received_message)
+        
+            received_message = sender_socket.recv(2048)
+            
             #print("Node %d got message: %s" % (self.node_id , received_message))
             sender_socket.close()
+        
+            [received_message,public_key] = received_message.split(b'split')
+  
+
+            # Create a VerifyKey object from a hex serialized public key
+            verify_key = VerifyKey(public_key)
+
+            received_message  = verify_key.verify(received_message).decode()
+
+            received_message = received_message.replace("\'", "\"")
+
+            received_message = json.loads(received_message)
+
+            #print(received_message)
+
             #####################
             time.sleep(waiting_time)
-
             message_type = received_message["message_type"]
             if i == 1 or len(self.asked_view_change)!= 0: # Only accept checkpoints, view changes and new-view messages
                     if message_type in ["CHECKPOINT","VOTE","VIEW-CHANGE","NEW-VIEW"]:
@@ -475,7 +547,6 @@ class Node():
                             if request not in replied_requests or replied_requests[request]==0:
                                 if(message_type=="REQUEST" or (received_message["view_number"] == self.view_number)):   # Only accept messages with view numbers==the view number of the node
                                     client_id = received_message["client_id"]
-                                
                                     if (client_id in self.replies and received_message==self.replies[client_id][0]):
                                         print("Node %d: Request already processed" % self.node_id)
                                         reply = self.replies[client_id][1]
@@ -490,6 +561,7 @@ class Node():
                         else:
                             threading.Thread(target=self.process_received_message,args=(received_message,)).start()
     
+
     def send(self,destination_node_id,message):
         destination_node_port = nodes_ports[destination_node_id]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -497,7 +569,7 @@ class Node():
         host = socket.gethostname() 
         try:
             s.connect((host, destination_node_port))
-            s.send(str(message).encode())  
+            s.send(message)  
             s.close() 
         except:
             pass
@@ -526,8 +598,24 @@ class Node():
             preprepare_message["client_id"]=request_message["client_id"]
             self.preprepares[tuple]=digest
             self.message_log.append(preprepare_message)
+
+            # Generate a new random signing key
+            signing_key = SigningKey.generate()
+
+            # Sign the message with the signing key
+            signed_preprepare = signing_key.sign(str(preprepare_message).encode())
+
+            # Obtain the verify key for a given signing key
+            verify_key = signing_key.verify_key
+
+            # Serialize the verify key to send it to a third party
+            public_key = verify_key.encode()
+
+            preprepare_message = signed_preprepare +(b'split')+  public_key
+
+            #self.broadcast_message(nodes_ids_list,preprepare_message)
             self.broadcast_message(nodes_ids_list,preprepare_message)
-            #self.send(self.node_id,preprepare_message)
+
 
     def broadcast_prepare_message(self,preprepare_message,nodes_ids_list): # The node broadcasts a prepare message
         if (replied_requests[preprepare_message["request"]]==0):
@@ -544,6 +632,24 @@ class Node():
             prepare_message["node_id"]=self.node_id
             prepare_message["client_id"]=preprepare_message["client_id"]
             prepare_message["timestamp"]=preprepare_message["timestamp"]
+
+
+
+            # Generate a new random signing key
+            signing_key = SigningKey.generate()
+
+            # Sign the message with the signing key
+            signed_prepare = signing_key.sign(str(prepare_message).encode())
+
+            # Obtain the verify key for a given signing key
+            verify_key = signing_key.verify_key
+
+            # Serialize the verify key to send it to a third party
+            public_key = verify_key.encode()
+
+            prepare_message = signed_prepare +(b'split')+  public_key
+
+        
             self.broadcast_message(nodes_ids_list,prepare_message)
             #self.send(self.node_id,prepare_message)
 
@@ -562,6 +668,24 @@ class Node():
             commit_message["request_digest"]=prepare_message["request_digest"]
             commit_message["request"]=prepare_message["request"]
             commit_message["timestamp"]=prepare_message["timestamp"]
+
+
+            # Generate a new random signing key
+            signing_key = SigningKey.generate()
+
+            # Sign the message with the signing key
+            signed_commit = signing_key.sign(str(commit_message).encode())
+
+            # Obtain the verify key for a given signing key
+            verify_key = signing_key.verify_key
+
+            # Serialize the verify key to send it to a third party
+            public_key = verify_key.encode()
+
+            commit_message = signed_commit +(b'split')+  public_key
+
+
+
             self.broadcast_message(nodes_ids_list,commit_message)
 
     def broadcast_view_change(self): # The node broadcasts a view change
@@ -581,6 +705,25 @@ class Node():
         
         # We define P as a set of prepared messages at the actual node with sequence number higher than the sequence number in the last checkpoint
         view_change_message["P"]=[message for message in self.prepared_messages if message["sequence_number"]>self.stable_checkpoint["sequence_number"]]
+
+
+        # Generate a new random signing key
+        signing_key = SigningKey.generate()
+
+        # Sign the message with the signing key
+        signed_view_change = signing_key.sign(str(view_change_message).encode())
+
+        # Obtain the verify key for a given signing key
+        verify_key = signing_key.verify_key
+
+        # Serialize the verify key to send it to a third party
+        public_key = verify_key.encode()
+
+        view_change_message = signed_view_change +(b'split')+  public_key
+
+
+
+
         self.broadcast_message(the_nodes_ids_list,view_change_message)
         return view_change_message
 
@@ -600,11 +743,28 @@ class Node():
         reply_message["sequence_number"]=commit_message["sequence_number"]
         reply_message["request"]=commit_message["request"]
         reply_message["request_digest"]=commit_message["request_digest"]
+
+
+        # Generate a new random signing key
+        signing_key = SigningKey.generate()
+
+        # Sign the message with the signing key
+        signed_reply = signing_key.sign(str(reply_message).encode())
+
+        # Obtain the verify key for a given signing key
+        verify_key = signing_key.verify_key
+
+        # Serialize the verify key to send it to a third party
+        public_key = verify_key.encode()
+
+        signed_reply_message = signed_reply +(b'split')+  public_key
+
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         host = socket.gethostname() 
         try:
             s.connect((host, client_port))
-            s.send(str(reply_message).encode())
+            s.send(signed_reply_message)
             s.close()
             self.message_reply.append(reply_message)
         except:
@@ -652,5 +812,24 @@ class FaultyPrimary(Node): # This node changes the client's request digest while
         preprepare_message["client_id"]=request_message["client_id"]
         preprepare_message["node_id"]=self.node_id
         self.preprepares[tuple]=digest
+
+
+        # Generate a new random signing key
+        signing_key = SigningKey.generate()
+
+        # Sign the message with the signing key
+        signed_preprepare = signing_key.sign(str(preprepare_message).encode())
+
+        # Obtain the verify key for a given signing key
+        verify_key = signing_key.verify_key
+
+        # Serialize the verify key to send it to a third party
+        public_key = verify_key.encode()
+
+        preprepare_message = signed_preprepare +(b'split')+  public_key
+
+
+
+
         self.message_log.append(preprepare_message)
         self.broadcast_message(nodes_ids_list,preprepare_message)

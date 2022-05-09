@@ -3,6 +3,8 @@ import json
 import datetime
 import time
 from PBFT import *
+from nacl.signing import SigningKey
+from nacl.signing import VerifyKey
 
 ports_file = "ports.json"
 with open(ports_file):
@@ -59,9 +61,21 @@ class Client: # Client's communication is synchronous: It can not send a request
                     break
                 else:
                     break
-            received_message = c.recv(2048).decode()
+            received_message = c.recv(2048)
+        
+            [received_message,public_key] = received_message.split(b'split')
+  
+
+            # Create a VerifyKey object from a hex serialized public key
+            verify_key = VerifyKey(public_key)
+
+            received_message  = verify_key.verify(received_message).decode()
+
             received_message = received_message.replace("\'", "\"")
+
             received_message = json.loads(received_message)
+
+
             #print("Client %d received message: %s" % (self.client_id , received_message))
             answering_node_id = received_message["node_id"]
             request_timestamp = received_message["timestamp"]
@@ -97,11 +111,28 @@ class Client: # Client's communication is synchronous: It can not send a request
         request_message["timestamp"] = now
         request_message["request"] = request
         request_message["client_id"] = self.client_id
+
+        # Generate a new random signing key
+        signing_key = SigningKey.generate()
+
+        # Sign the message with the signing key
+        signed_request = signing_key.sign(str(request_message).encode())
+
+        # Obtain the verify key for a given signing key
+        verify_key = signing_key.verify_key
+
+        # Serialize the verify key to send it to a third party
+        public_key = verify_key.encode()
+
+        request_message = signed_request +(b'split')+  public_key
+
         # The client sends the request to what it believes is the primary node:
         sending_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         host = socket.gethostname() 
         sending_socket.connect((host, primary_node_port))
-        sending_socket.send(str(request_message).encode())
+
+        sending_socket.send(request_message)
+ 
         if (request not in self.sent_requests_without_answer):
             self.sent_requests_without_answer.append(request)
         sending_time = time.time() # This is the time when the client's request was sent to the network
@@ -111,7 +142,8 @@ class Client: # Client's communication is synchronous: It can not send a request
         s = self.socket
         while True:
             try: 
-                c, addr = s.accept()
+                s=self.socket
+                sender_socket = s.accept()[0]
             except socket.timeout:
                 if len(self.sent_requests_without_answer)!=0:
                     print("No received reply")
@@ -120,9 +152,24 @@ class Client: # Client's communication is synchronous: It can not send a request
                     break
                 else:
                     continue
-            received_message = c.recv(2048).decode()
+
+            received_message = sender_socket.recv(2048)
+            
+            #print("Node %d got message: %s" % (self.node_id , received_message))
+            sender_socket.close()
+        
+            [received_message , public_key] = received_message.split(b'split')
+  
+            # Create a VerifyKey object from a hex serialized public key
+            
+            verify_key = VerifyKey(public_key)
+            
+            received_message  = verify_key.verify(received_message).decode()
+
             received_message = received_message.replace("\'", "\"")
+
             received_message = json.loads(received_message)
+
             #print("Client %d received message: %s" % (self.client_id , received_message))
             answering_node_id = received_message["node_id"]
             request_timestamp = received_message["timestamp"]
