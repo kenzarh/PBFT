@@ -1,0 +1,7 @@
+{
+    "host":"localhost",
+    "clients_starting_port":20000,
+    "clients_max_number":100,
+    "nodes_starting_port":2000,
+    "nodes_max_number":1000
+}

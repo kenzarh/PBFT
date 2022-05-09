@@ -6,18 +6,29 @@ import time
 import hashlib
 import sys
 
-nodes_ports = [(2000 + i) for i in range (0,2000)]
+ports_file = "ports.json"
+with open(ports_file):
+    ports_format= open(ports_file)
+    ports = json.load(ports_format)
+    ports_format.close()
 
-clients_ports = [(20000 + i) for i in range (0,20)]
+clients_starting_port = ports["clients_starting_port"]
+clients_max_number = ports["clients_max_number"]
 
-preprepare_format_file = "preprepare_format.json"
-prepare_format_file = "prepare_format.json"
-commit_format_file = "commit_format.json"
-reply_format_file = "reply_format.json"
-checkpoint_format_file = "checkpoint_format.json"
-checkpoint_vote_format_file = "checkpoint_vote_format.json"
-view_change_format_file = "view_change_format.json"
-new_view_format_file = "new_view_format.json"
+nodes_starting_port = ports["nodes_starting_port"]
+nodes_max_number = ports["nodes_max_number"]
+
+nodes_ports = [(nodes_starting_port + i) for i in range (0,nodes_max_number)]
+clients_ports = [(clients_starting_port + i) for i in range (0,clients_max_number)]
+
+preprepare_format_file = "messages_formats/preprepare_format.json"
+prepare_format_file = "messages_formats/prepare_format.json"
+commit_format_file = "messages_formats/commit_format.json"
+reply_format_file = "messages_formats/reply_format.json"
+checkpoint_format_file = "messages_formats/checkpoint_format.json"
+checkpoint_vote_format_file = "messages_formats/checkpoint_vote_format.json"
+view_change_format_file = "messages_formats/view_change_format.json"
+new_view_format_file = "messages_formats/new_view_format.json"
 
 
 def run_PBFT(nodes,checkpoint_frequency0,clients_ports0,timer_limit_before_view_change0): # All the nodes participate in the consensus
@@ -76,10 +87,11 @@ def run_PBFT(nodes,checkpoint_frequency0,clients_ports0,timer_limit_before_view_
                     node=SlowNode(node_id=j)
                 nodes_list.append(node)
                 the_nodes_ids_list.append(j)
-                j=j+1
                 threading.Thread(target=node.receive,args=()).start()
+                print("%s node %d started" %(node_type,j))
                 n = n + 1
                 f = (n - 1) // 3
+                j=j+1
 
 def stop_request_execution(request): # This method tells the nodes that the client received its reply so that they stop processing it
     replied_requests[request] = 1
@@ -306,22 +318,19 @@ class Node():
                 new_asked_view = received_message["new_view"]
                 node_requester = received_message["node_id"]
                 if (new_asked_view % len(the_nodes_ids_list) == self.node_id): # If the actual node is the primary node for the next view
-                    
-                 
                     if new_asked_view not in self.received_view_changes:
                         self.received_view_changes[new_asked_view]=[received_message]
                     else:
+
                         requested_nodes = [] # Nodes that requested changing the view
                         for request in self.received_view_changes[new_asked_view]:
                             requested_nodes.append(request["node_id"])
+                       
                         if node_requester not in requested_nodes:
                             self.received_view_changes[new_asked_view].append(received_message)
-                    
 
                     if len(self.received_view_changes[new_asked_view])==2*f:
-
                         
-                        print("New view!")
 
                         #The primary sends a view-change message for this view if it didn't do it before
                         if new_asked_view not in self.asked_view_change:
@@ -377,33 +386,33 @@ class Node():
                                             t=message["timestamp"]
                                             c=message["client_id"]
 
-                                preprepare_message["request"]=r
-                                preprepare_message["timestamp"]=t
-                                preprepare_message["client_id"]=c
+                                            preprepare_message["request"]=r
+                                            preprepare_message["timestamp"]=t
+                                            preprepare_message["client_id"]=c
 
-                                # Restart timers:
-                                for request in self.accepted_requests_time:
-                                    self.accepted_requests_time[request]=time.time()
-                                    
-                                if (i==0): # Case 2
-                                    preprepare_message["request_digest"]="null"
-                                    O.append(preprepare_message)
-                                    self.message_log.append(preprepare_message)
-                                
-                                else: # Case 1
-                                    preprepare_message["request_digest"]=d
-                                    O.append(preprepare_message)
-                                    self.message_log.append(preprepare_message)
+                                    # Restart timers:
+                                    for request in self.accepted_requests_time:
+                                                self.accepted_requests_time[request]=time.time()
+                                                
+                                    if (i==0): # Case 2
+                                                preprepare_message["request_digest"]="null"
+                                                O.append(preprepare_message)
+                                                self.message_log.append(preprepare_message)
+                                            
+                                    else: # Case 1
+                                                preprepare_message["request_digest"]=d
+                                                O.append(preprepare_message)
+                                                self.message_log.append(preprepare_message)
 
                         new_view_message["O"]=O
-                       
 
                         if (min_s>=self.stable_checkpoint["sequence_number"]):
                             # The primary node enters the new view
                             self.view_number=new_asked_view
                             self.primary_node_id=self.node_id
+
                             self.broadcast_message(the_nodes_ids_list,new_view_message)
-                            self.asked_view_change.clear()
+                            print("New view!")
                           
 
             elif (message_type=="NEW-VIEW"):
@@ -428,7 +437,7 @@ class Node():
                 
     
     def receive(self,waiting_time=0): # The waiting_time parameter is for nodes we want to be slow, they will wait for a few seconds before processing a message =0 by default
-        print("Node %d started" %self.node_id)
+        
         while True:
             # Start view change if one of the timers has reached the limit:
             i = 0 # Means no timer reached the limit , i = 1 means one of the timers reached their limit
@@ -437,7 +446,6 @@ class Node():
                     actual_time = time.time()
                     timer = self.accepted_requests_time[request]
                     if (actual_time - timer) >= timer_limit_before_view_change:
-                        
                         i = 1 # One of the timers reached their limit
                         new_view = self.view_number+1
                         break
@@ -642,6 +650,7 @@ class FaultyPrimary(Node): # This node changes the client's request digest while
         preprepare_message["request_digest"]=digest
         preprepare_message["request"]=request_message["request"]
         preprepare_message["client_id"]=request_message["client_id"]
+        preprepare_message["node_id"]=self.node_id
         self.preprepares[tuple]=digest
         self.message_log.append(preprepare_message)
         self.broadcast_message(nodes_ids_list,preprepare_message)
