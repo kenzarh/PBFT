@@ -31,7 +31,6 @@ checkpoint_vote_format_file = "messages_formats/checkpoint_vote_format.json"
 view_change_format_file = "messages_formats/view_change_format.json"
 new_view_format_file = "messages_formats/new_view_format.json"
 
-
 def run_PBFT(nodes,checkpoint_frequency0,clients_ports0,timer_limit_before_view_change0): # All the nodes participate in the consensus
 
     global number_of_messages
@@ -71,6 +70,7 @@ def run_PBFT(nodes,checkpoint_frequency0,clients_ports0,timer_limit_before_view_
     nodes_list = []
 
     last_waiting_time = 0
+
     # Starting all consensus nodes:
     for waiting_time in nodes:
         for tuple in nodes[waiting_time]:
@@ -102,7 +102,6 @@ def get_primary_id():
     node_0=nodes_list[0]
     return node_0.primary_node_id
 
-
 def get_nodes_ids_list():
     return the_nodes_ids_list
 
@@ -115,7 +114,6 @@ class Node():
         self.node_port = nodes_ports[node_id]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        #s.settimeout(timer_limit_before_view_change)
         host = socket.gethostname() 
         s.bind((host, self.node_port))
         s.listen()
@@ -139,6 +137,7 @@ class Node():
         self.accepted_requests_time = {} # This is a dictionary of the accepted preprepare messages with the time they were accepted so that one the timer is reached, the node starts a wiew change. The dictionary has the form : {"request":starting_time...}. the request is discarded once it is executed.
         self.received_view_changes = {} # Dictionary of received view-change messages (+ the view change the node itself sent) if the node is the primary node in the new view, it has the form: {new_view_number:[list_of_view_change_messages]}
         self.asked_view_change = [] # view numbers the node asked for
+
     def process_received_message(self,received_message):
             message_type = received_message["message_type"]
             if (message_type=="REQUEST"):
@@ -225,7 +224,7 @@ class Node():
                 number_of_messages[received_message["request"]] = number_of_messages[received_message["request"]] + 1
                 timestamp = received_message["timestamp"]
                 client_id = received_message["client_id"]
-                # TO DO:Make sure about the message signature + h<sequence number<H
+                # TO DO: Make sure that h<sequence number<H
                 client_id = received_message["client_id"]
                 timestamp = received_message["timestamp"]
                 sequence_number = received_message["sequence_number"]
@@ -273,9 +272,6 @@ class Node():
                                 self.checkpoints_sequence_number.append(sequence_number)
                                 self.checkpoints[str(checkpoint_message)]=[self.node_id]
 
-
-
-
                                 # Generate a new random signing key
                                 signing_key = SigningKey.generate()
 
@@ -290,9 +286,6 @@ class Node():
 
                                 checkpoint_message = signed_checkpoint +(b'split')+  public_key
 
-
-
-                                
                                 self.broadcast_message(the_nodes_ids_list,checkpoint_message)
                                 
             elif (message_type=="CHECKPOINT"):
@@ -312,8 +305,6 @@ class Node():
                             checkpoint_vote_message["checkpoint_digest"] = received_message["checkpoint_digest"]
                             checkpoint_vote_message["node_id"] = self.node_id
 
-
-
                             # Generate a new random signing key
                             signing_key = SigningKey.generate()
 
@@ -328,10 +319,10 @@ class Node():
 
                             checkpoint_vote_message = signed_checkpoint_vote +(b'split')+  public_key
 
-
-
                             self.send(received_message["node_id"],checkpoint_vote_message) 
+
                 lock.release()
+
             elif (message_type=="VOTE"):
                 lock = Lock()
                 lock.acquire()
@@ -355,7 +346,6 @@ class Node():
                                         if (message["sequence_number"]<= checkpoint["sequence_number"]):
                                             self.message_log.remove(message)
                                 break
-                
                 lock.release()
 
             elif (message_type=="VIEW-CHANGE"):
@@ -365,7 +355,6 @@ class Node():
                     if new_asked_view not in self.received_view_changes:
                         self.received_view_changes[new_asked_view]=[received_message]
                     else:
-
                         requested_nodes = [] # Nodes that requested changing the view
                         for request in self.received_view_changes[new_asked_view]:
                             requested_nodes.append(request["node_id"])
@@ -374,8 +363,6 @@ class Node():
                             self.received_view_changes[new_asked_view].append(received_message)
 
                     if len(self.received_view_changes[new_asked_view])==2*f:
-                        
-
                         #The primary sends a view-change message for this view if it didn't do it before
                         if new_asked_view not in self.asked_view_change:
                             view_change_message = self.broadcast_view_change()
@@ -392,7 +379,6 @@ class Node():
                         new_view_message["V"]=V
 
                         # Creating the "O" set of the new view message:
-
                         # Initializing min_s and max_s:
                         min_s=0
                         max_s=0
@@ -406,8 +392,6 @@ class Node():
                         O = []
                         
                         if (max_s>min_s):
-                        #if(3>2):
-
                             # Creating a preprepare-view message for new_asked_view for each sequence number between max_s and min_s
                             for s in range (min_s,max_s):
                                 with open(preprepare_format_file):
@@ -451,10 +435,10 @@ class Node():
                         new_view_message["O"]=O
 
                         if (min_s>=self.stable_checkpoint["sequence_number"]):
+
                             # The primary node enters the new view
                             self.view_number=new_asked_view
                             self.primary_node_id=self.node_id
-
 
                             # Generate a new random signing key
                             signing_key = SigningKey.generate()
@@ -471,11 +455,12 @@ class Node():
                             new_view_message = signed_new_view +(b'split')+  public_key
 
                             self.broadcast_message(the_nodes_ids_list,new_view_message)
+
                             print("New view!")
                           
 
             elif (message_type=="NEW-VIEW"):
-                # TO DO : Make sure about the signature
+
                 # TO DO : Verify the set O in the new view message
 
                 # Restart timers:
@@ -483,6 +468,7 @@ class Node():
                     self.accepted_requests_time[request]=time.time()
       
                 O = received_message["O"]
+
                 # Broadcast a prepare message for each preprepare message in O
                 if len(O)!=0:
                     for message in O:
@@ -494,7 +480,6 @@ class Node():
                 self.primary_node_id=received_message["new_view_number"]%n
                 self.asked_view_change.clear()
                 
-    
     def receive(self,waiting_time=0): # The waiting_time parameter is for nodes we want to be slow, they will wait for a few seconds before processing a message =0 by default
         while True:
             # Start view change if one of the timers has reached the limit:
@@ -523,19 +508,13 @@ class Node():
         
             [received_message,public_key] = received_message.split(b'split')
   
-
             # Create a VerifyKey object from a hex serialized public key
             verify_key = VerifyKey(public_key)
 
             received_message  = verify_key.verify(received_message).decode()
-
             received_message = received_message.replace("\'", "\"")
-
             received_message = json.loads(received_message)
 
-            #print(received_message)
-
-            #####################
             time.sleep(waiting_time)
             message_type = received_message["message_type"]
             if i == 1 or len(self.asked_view_change)!= 0: # Only accept checkpoints, view changes and new-view messages
@@ -561,7 +540,6 @@ class Node():
                         else:
                             threading.Thread(target=self.process_received_message,args=(received_message,)).start()
     
-
     def send(self,destination_node_id,message):
         destination_node_port = nodes_ports[destination_node_id]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -576,8 +554,8 @@ class Node():
      
     def broadcast_message(self,nodes_ids_list,message): # Send to all connected nodes # Acts as a socket server
         for destination_node_id in nodes_ids_list:
-            #if (destination_node_id != self.node_id):
                 self.send(destination_node_id,message)
+                
     def broadcast_preprepare_message(self,request_message,nodes_ids_list): # The primary node prepares and broadcats a PREPREPARE message
         if (replied_requests[request_message["request"]]==0):
             with open(preprepare_format_file):
@@ -613,14 +591,11 @@ class Node():
 
             preprepare_message = signed_preprepare +(b'split')+  public_key
 
-            #self.broadcast_message(nodes_ids_list,preprepare_message)
             self.broadcast_message(nodes_ids_list,preprepare_message)
-
 
     def broadcast_prepare_message(self,preprepare_message,nodes_ids_list): # The node broadcasts a prepare message
         if (replied_requests[preprepare_message["request"]]==0):
             # S'assurer des conditions avant d'envoyer le PREPARE message
-            #prepare_message = prepare_format.read()
             with open(prepare_format_file):
                 prepare_format= open(prepare_format_file)
                 prepare_message = json.load(prepare_format)
@@ -632,8 +607,6 @@ class Node():
             prepare_message["node_id"]=self.node_id
             prepare_message["client_id"]=preprepare_message["client_id"]
             prepare_message["timestamp"]=preprepare_message["timestamp"]
-
-
 
             # Generate a new random signing key
             signing_key = SigningKey.generate()
@@ -648,10 +621,8 @@ class Node():
             public_key = verify_key.encode()
 
             prepare_message = signed_prepare +(b'split')+  public_key
-
         
             self.broadcast_message(nodes_ids_list,prepare_message)
-            #self.send(self.node_id,prepare_message)
 
             return prepare_message
 
@@ -669,7 +640,6 @@ class Node():
             commit_message["request"]=prepare_message["request"]
             commit_message["timestamp"]=prepare_message["timestamp"]
 
-
             # Generate a new random signing key
             signing_key = SigningKey.generate()
 
@@ -683,8 +653,6 @@ class Node():
             public_key = verify_key.encode()
 
             commit_message = signed_commit +(b'split')+  public_key
-
-
 
             self.broadcast_message(nodes_ids_list,commit_message)
 
@@ -706,7 +674,6 @@ class Node():
         # We define P as a set of prepared messages at the actual node with sequence number higher than the sequence number in the last checkpoint
         view_change_message["P"]=[message for message in self.prepared_messages if message["sequence_number"]>self.stable_checkpoint["sequence_number"]]
 
-
         # Generate a new random signing key
         signing_key = SigningKey.generate()
 
@@ -721,9 +688,6 @@ class Node():
 
         view_change_message = signed_view_change +(b'split')+  public_key
 
-
-
-
         self.broadcast_message(the_nodes_ids_list,view_change_message)
         return view_change_message
 
@@ -735,7 +699,7 @@ class Node():
             reply_message = json.load(reply_format)
             reply_format.close()
         reply_message["view_number"]=self.view_number
-        #reply_message["timestamp"]=
+        reply_message["timestamp"]=commit_message["timestamp"]
         reply_message["client_id"]=client_id
         reply_message["node_id"]=self.node_id
         reply = "Request executed"
@@ -743,7 +707,6 @@ class Node():
         reply_message["sequence_number"]=commit_message["sequence_number"]
         reply_message["request"]=commit_message["request"]
         reply_message["request_digest"]=commit_message["request_digest"]
-
 
         # Generate a new random signing key
         signing_key = SigningKey.generate()
@@ -758,7 +721,6 @@ class Node():
         public_key = verify_key.encode()
 
         signed_reply_message = signed_reply +(b'split')+  public_key
-
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         host = socket.gethostname() 
@@ -786,11 +748,9 @@ class NonRespondingNode(Node):
             #try:
             sender_socket = s.accept()[0]
             received_message = sender_socket.recv(2048).decode()
-                #print("Node %d got message: %s" % (self.node_id , received_message))
+            #print("Node %d got message: %s" % (self.node_id , received_message))
             sender_socket.close()
-                # receives messages but doesn't do anything with them
-            #except:
-            #    self.receive()
+            # receives messages but doesn't do anything
 
 class FaultyPrimary(Node): # This node changes the client's request digest while sending a preprepare message
     def broadcast_preprepare_message(self,request_message,nodes_ids_list): # The primary node prepares and broadcats a PREPREPARE message
@@ -804,7 +764,7 @@ class FaultyPrimary(Node): # This node changes the client's request digest while
         preprepare_message["timestamp"]=request_message["timestamp"]
         tuple = (self.view_number,sequence_number)
         sequence_number = sequence_number + 1 # Increment the sequence number after each request 
-        #Calculating the request's digest using SHA256
+        # Calculating the request's digest using SHA256
         request = request_message["request"]+"abc"
         digest = hashlib.sha256(request.encode()).hexdigest()
         preprepare_message["request_digest"]=digest
@@ -812,7 +772,7 @@ class FaultyPrimary(Node): # This node changes the client's request digest while
         preprepare_message["client_id"]=request_message["client_id"]
         preprepare_message["node_id"]=self.node_id
         self.preprepares[tuple]=digest
-
+        self.message_log.append(preprepare_message)
 
         # Generate a new random signing key
         signing_key = SigningKey.generate()
@@ -828,8 +788,4 @@ class FaultyPrimary(Node): # This node changes the client's request digest while
 
         preprepare_message = signed_preprepare +(b'split')+  public_key
 
-
-
-
-        self.message_log.append(preprepare_message)
         self.broadcast_message(nodes_ids_list,preprepare_message)

@@ -65,16 +65,12 @@ class Client: # Client's communication is synchronous: It can not send a request
         
             [received_message,public_key] = received_message.split(b'split')
   
-
             # Create a VerifyKey object from a hex serialized public key
             verify_key = VerifyKey(public_key)
 
             received_message  = verify_key.verify(received_message).decode()
-
             received_message = received_message.replace("\'", "\"")
-
             received_message = json.loads(received_message)
-
 
             #print("Client %d received message: %s" % (self.client_id , received_message))
             answering_node_id = received_message["node_id"]
@@ -82,7 +78,6 @@ class Client: # Client's communication is synchronous: It can not send a request
             result = received_message["result"]
             response = [request_timestamp,result]
             str_response = str(response)
-            # TO DO : S'assurer de la signature du message
             if (answering_node_id not in answered_nodes): # Ne rien faire si le noeud a déjà répondu
                 answered_nodes.append(answering_node_id)
                 # Increment the number of received replies:
@@ -98,8 +93,6 @@ class Client: # Client's communication is synchronous: It can not send a request
                         number_of_messages = stop_request_execution(received_message["request"])
                         print("Client %d got reply within %f seconds. The network exchanged %d messages" % (self.client_id,duration,number_of_messages))
                         self.sent_requests_without_answer.remove(received_message["request"])
-                        #s.close()
-                        #sys.exit()
 
     def send_to_primary (self,request,primary_node_id,nodes_ids_list,f): # Sends a request to the primary and waits for f+1 similar answers
         primary_node_port = nodes_ports[primary_node_id]
@@ -130,7 +123,6 @@ class Client: # Client's communication is synchronous: It can not send a request
         sending_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         host = socket.gethostname() 
         sending_socket.connect((host, primary_node_port))
-
         sending_socket.send(request_message)
  
         if (request not in self.sent_requests_without_answer):
@@ -152,31 +144,24 @@ class Client: # Client's communication is synchronous: It can not send a request
                     break
                 else:
                     continue
-
             received_message = sender_socket.recv(2048)
-            
             #print("Node %d got message: %s" % (self.node_id , received_message))
             sender_socket.close()
         
             [received_message , public_key] = received_message.split(b'split')
   
             # Create a VerifyKey object from a hex serialized public key
-            
             verify_key = VerifyKey(public_key)
             
             received_message  = verify_key.verify(received_message).decode()
-
             received_message = received_message.replace("\'", "\"")
-
             received_message = json.loads(received_message)
-
             #print("Client %d received message: %s" % (self.client_id , received_message))
             answering_node_id = received_message["node_id"]
             request_timestamp = received_message["timestamp"]
             result = received_message["result"]
             response = [request_timestamp,result]
             str_response = str(response)
-            # TO DO : S'assurer de la signature du message
             if (answering_node_id not in answered_nodes): # Ne rien faire si le noeud a déjà répondu
                 answered_nodes.append(answering_node_id)
                 # Increment the number of received replies:
@@ -192,5 +177,3 @@ class Client: # Client's communication is synchronous: It can not send a request
                         number_of_messages = stop_request_execution(received_message["request"])
                         print("Client %d got reply within %f seconds. The network exchanged %d messages" % (self.client_id,duration,number_of_messages))
                         self.sent_requests_without_answer.remove(received_message["request"])
-                        #s.close()
-                        #sys.exit()
