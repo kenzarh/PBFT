@@ -1,2 +1,2 @@
-# Dynamic PBFT
-This proposed version of PBFT attributes scores to nodes based on their behaviour.
+# PBFT
+This is an implementation of the classic PBFT protocol.
