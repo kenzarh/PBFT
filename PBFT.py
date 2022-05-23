@@ -128,7 +128,6 @@ def run_nodes(nodes):
                 the_nodes_ids_list.append(j)
                 processed_messages.append(0)
                 messages_processing_rate.append(0) # Initiated with 0
-             
                 consensus_nodes.append(j)
                 n = n + 1
                 f = (n - 1) // 3
@@ -156,13 +155,10 @@ def reply_received(request,reply): # This method tells the nodes that the client
     if processed_requests%5 == 0 : # We want to stop counting at 100 for example
         print("Network validated %d requests within %f seconds" % (processed_requests,last_reply_time-first_reply_time))
 
- 
     replied_requests[request] = 1
     accepted_replies[request] = reply
 
- 
     return number_of_messages[request]
-
 
 def get_primary_id():
     node_0=nodes_list[0]
@@ -250,8 +246,6 @@ class Node():
                 view = received_message["view_number"]
                 tuple = (view,received_message["sequence_number"])
 
-             
-
                 # Making sure the digest's request is good + the view number in the message is similar to the view number of the node + We did not broadcast a message with the same view number and sequence number
                 if ((digest==requests_digest) and (view==self.view_number)): 
                     if request not in self.accepted_requests_time:
@@ -307,7 +301,6 @@ class Node():
                 digest = hashlib.sha256(request.encode()).hexdigest()
                 requests_digest = received_message["request_digest"]
               
-
                 number_of_messages[received_message["request"]] = number_of_messages[received_message["request"]] + 1
                 timestamp = received_message["timestamp"]
                 client_id = received_message["client_id"]

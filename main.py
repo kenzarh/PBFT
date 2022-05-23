@@ -10,9 +10,6 @@ waiting_time_before_resending_request = 200 # Time the client will wait before r
 timer_limit_before_view_change = 200 # There is no value proposed in the paper so let's fix it to 120s
 checkpoint_frequency = 100 # 100 is the proposed value in the original article
 
-# Define the proportion of nodes we want in the consensus set
-p = 1
-
 # Define the nodes we want in our network + their starting time + their type
 nodes={} # This is a dictionary of nodes we want in our network. Keys are the nodes types, and values are a list of tuples of starting time and number of nodes 
 #nodes[starting time] = [(type of nodes , number of nodes)]
@@ -20,8 +17,8 @@ nodes[0]=[("faulty_primary",0),("slow_nodes",0),("honest_node",3),("non_respondi
 #nodes[1]=[("faulty_primary",0),("honest_node",1),("non_responding_node",0),("slow_nodes",1),("faulty_node",1),("faulty_replies_node",0)] # Nodes starting after 2 seconds
 #nodes[2]=[("faulty_primary",0),("honest_node",0),("non_responding_node",0),("slow_nodes",2),("faulty_node",1),("faulty_replies_node",0)]
 
-# Running APBFT protocol
-run_APBFT(nodes=nodes,proportion=p,checkpoint_frequency0=checkpoint_frequency,clients_ports0=clients_ports,timer_limit_before_view_change0=timer_limit_before_view_change)
+# Running PBFT protocol
+run_APBFT(nodes=nodes,proportion=1,checkpoint_frequency0=checkpoint_frequency,clients_ports0=clients_ports,timer_limit_before_view_change0=timer_limit_before_view_change)
 
 time.sleep(1) # Waiting for the network to start...
 
