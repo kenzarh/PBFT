@@ -183,7 +183,8 @@ class Client: # Client's communication is synchronous: It can not send a request
                         receiving_time=time.time()
                         duration = receiving_time-sending_time
                         number_of_messages = reply_received(received_message["request"],received_message["result"])
-                        print("Client %d got reply within %f seconds. The network exchanged %d messages" % (self.client_id,duration,number_of_messages))
+                        if similar_replies == (f+1):
+                            print("Client %d got reply within %f seconds. The network exchanged %d messages" % (self.client_id,duration,number_of_messages))
                         if (received_message["request"] in self.sent_requests_without_answer):
                             self.sent_requests_without_answer.remove(received_message["request"])
                         # Punish nodes that sent a bad reply to the client:
