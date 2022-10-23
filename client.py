@@ -1,16 +1,15 @@
+import re
 import socket
 import json
 import datetime
 import time
 from PBFT import *
-from nacl.signing import SigningKey
-from nacl.signing import VerifyKey
+
+from ecc import*
+from parametrs import*
 
 ports_file = "ports.json"
-with open(ports_file):
-    ports_format= open(ports_file)
-    ports = json.load(ports_format)
-    ports_format.close()
+ports=json_load(ports_file)
 
 clients_starting_port = ports["clients_starting_port"]
 clients_max_number = ports["clients_max_number"]
@@ -29,11 +28,8 @@ class Client: # Client's communication is synchronous: It can not send a request
     def __init__(self,client_id,waiting_time_before_resending_request):
         self.client_id = client_id
         self.client_port = clients_ports[client_id]
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(waiting_time_before_resending_request)	
-        host = socket.gethostname() 
-        s.bind((host, self.client_port))
-        s.listen()
+        port=self.client_port
+        s = createSocket(waiting_time_before_resending_request,port)
         self.socket = s
         self.sent_requests_without_answer=[] # Requests the client sent but didn't get an answer yet
 
@@ -41,10 +37,7 @@ class Client: # Client's communication is synchronous: It can not send a request
 
         for node_id in nodes_ids_list:
             node_port = nodes_ports[node_id]
-            sending_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            host = socket.gethostname() 
-            sending_socket.connect((host, node_port))
-            sending_socket.send(request_message)
+            send_socket(node_port,request_message)
 
         # Waiting for answers
         answered_nodes = [] # list of nodes ids that answered the request
@@ -66,10 +59,9 @@ class Client: # Client's communication is synchronous: It can not send a request
             [received_message,public_key] = received_message.split(b'split')
   
             # Create a VerifyKey object from a hex serialized public key
-            verify_key = VerifyKey(public_key)
-            received_message  = verify_key.verify(received_message).decode()
+            received_message  =generate_verfiy(public_key,received_message)
             received_message = received_message.replace("\'", "\"")
-            received_message = json.loads(received_message)
+            received_message = json_load(received_message)
             #print("Client %d received message: %s" % (self.client_id , received_message))
             answering_node_id = received_message["node_id"]
             request_timestamp = received_message["timestamp"]
@@ -96,34 +88,15 @@ class Client: # Client's communication is synchronous: It can not send a request
 
     def send_to_primary (self,request,primary_node_id,nodes_ids_list,f): # Sends a request to the primary and waits for f+1 similar answers
         primary_node_port = nodes_ports[primary_node_id]
-        with open(request_format_file):
-            request_format= open(request_format_file)
-            request_message = json.load(request_format)
-            request_format.close()
+        request_message=json_load(request_format_file)
         now = datetime.datetime.now().timestamp()
         request_message["timestamp"] = now
         request_message["request"] = request
         request_message["client_id"] = self.client_id
-
-        # Generate a new random signing key
-        signing_key = SigningKey.generate()
-
-        # Sign the message with the signing key
-        signed_request = signing_key.sign(str(request_message).encode())
-
-        # Obtain the verify key for a given signing key
-        verify_key = signing_key.verify_key
-
-        # Serialize the verify key to send it to a third party
-        public_key = verify_key.encode()
-
-        request_message = signed_request +(b'split')+  public_key
-
+        # Generate a new random signing key   
+        request_message = generate_signature(request_message)
         # The client sends the request to what it believes is the primary node:
-        sending_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        host = socket.gethostname() 
-        sending_socket.connect((host, primary_node_port))
-        sending_socket.send(request_message)
+        send_socket(primary_node_port,request_message)
         if (request not in self.sent_requests_without_answer):
             self.sent_requests_without_answer.append(request)
         sending_time = time.time() # This is the time when the client's request was sent to the network
@@ -148,18 +121,14 @@ class Client: # Client's communication is synchronous: It can not send a request
                     continue
             received_message = sender_socket.recv(2048)
             
-            #print("Client %d got message: %s" % (self.client_id , received_message))
             sender_socket.close()
         
             [received_message , public_key] = received_message.split(b'split')
   
             # Create a VerifyKey object from a hex serialized public key
-            verify_key = VerifyKey(public_key)
-            
-            received_message  = verify_key.verify(received_message).decode()
+            received_message  = generate_verfiy(public_key,received_message)
             received_message = received_message.replace("\'", "\"")
             received_message = json.loads(received_message)
-            #print("Client %d received message: %s" % (self.client_id , received_message))
             answering_node_id = received_message["node_id"]
             request_timestamp = received_message["timestamp"]
             result = received_message["result"]
@@ -178,8 +147,8 @@ class Client: # Client's communication is synchronous: It can not send a request
                     similar_replies = similar_replies +1
                 if similar_replies >= (f+1):
                         
-                        accepted_reply = result
-                        accepted_response = str_response
+                        #accepted_reply = result
+                        #accepted_response = str_response
                         receiving_time=time.time()
                         duration = receiving_time-sending_time
                         number_of_messages = reply_received(received_message["request"],received_message["result"])
@@ -187,5 +156,4 @@ class Client: # Client's communication is synchronous: It can not send a request
                             print("Client %d got reply within %f seconds. The network exchanged %d messages" % (self.client_id,duration,number_of_messages))
                         if (received_message["request"] in self.sent_requests_without_answer):
                             self.sent_requests_without_answer.remove(received_message["request"])
-                        # Punish nodes that sent a bad reply to the client:
                         
