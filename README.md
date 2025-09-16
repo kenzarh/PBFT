@@ -1,2 +1,2 @@
 # PBFT
-This is an implementation of the classic PBFT protocol.
+This is an implementation of the classic PBFT protocol.###
